@@ -1,32 +1,33 @@
-from typing import Generator
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from app.core.config import settings
+from app.db.base_class import Base
 
-# Construct Oracle SQLAlchemy connection string using python-oracledb driver
-# Format: oracle+oracledb://user:password@host:port/?service_name=service
-DATABASE_URL = (
-    f"oracle+oracledb://{settings.DB_USER}:{settings.DB_PASSWORD}"
-    f"@{settings.DB_HOST}:{settings.DB_PORT}/?service_name={settings.DB_SERVICE_NAME}"
-)
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-# Create SQLAlchemy Database Engine
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./codesentinel.db")
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
 engine = create_engine(
     DATABASE_URL,
-    echo=settings.DEBUG,  # Logs generated SQL queries when DEBUG=True
-    pool_pre_ping=True,   # Verifies database connection before executing queries
+    echo=False,
+    pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
-# Create SessionLocal class factory for database operations
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
 
-# Declarative Base Class for ORM models
-Base = declarative_base()
 
-
-def get_db() -> Generator:
-    """FastAPI Dependency providing a database session per request."""
+def get_db():
     db = SessionLocal()
     try:
         yield db

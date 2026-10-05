@@ -1,45 +1,53 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
 from app.api.v1.router import api_router
+from app.db.base_class import Base
+from app.db.session import engine
 
-app = FastAPI(
-    title=settings.APP_NAME,
-    description="AI-Powered Code Review, Bug Detection & Security Analysis Platform",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+load_dotenv(
+    Path(__file__).resolve().parents[1] / ".env"
 )
 
-# Configure CORS
+from app import models  # noqa: E402,F401
+
+
+app = FastAPI(
+    title="CodeSentinel AI"
+)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount API v1 router
-app.include_router(api_router, prefix="/api/v1")
+
+@app.on_event("startup")
+def create_tables():
+    Base.metadata.create_all(
+        bind=engine
+    )
 
 
-@app.get("/", tags=["Health"])
-async def root():
-    """Root endpoint verifying API availability."""
+@app.get("/health")
+def health():
     return {
-        "message": f"Welcome to {settings.APP_NAME} API",
-        "status": "online",
-        "version": "1.0.0",
+        "status": "ok"
     }
 
 
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """Detailed system health check endpoint."""
-    return {
-        "status": "healthy",
-        "environment": settings.APP_ENV,
-        "debug_mode": settings.DEBUG,
-    }
+app.include_router(
+    api_router,
+    prefix="/api/v1"
+)
+Base.metadata.create_all(bind=engine)

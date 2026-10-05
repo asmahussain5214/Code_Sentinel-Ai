@@ -1,31 +1,70 @@
-from datetime import datetime, timedelta
-from typing import Optional, Any
-from jose import jwt
-from passlib.context import CryptContext
+from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
+import os
+from typing import Any, Optional, Union
+
+import jwt
 
 from app.core.config import settings
 
-# Password Hashing Context using Bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifies a plain password against the stored hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+ALGORITHM = settings.ALGORITHM
+SECRET_KEY = settings.SECRET_KEY
 
 
 def get_password_hash(password: str) -> str:
-    """Generates a Bcrypt hash from a plain password string."""
-    return pwd_context.hash(password)
+    salt = os.urandom(16)
+    iterations = 310_000
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+
+    return f"pbkdf2_sha256${iterations}${salt.hex()}${digest.hex()}"
 
 
-def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] = None) -> str:
-    """Generates a signed JWT access token for authentication."""
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        scheme, iterations, salt_hex, digest_hex = hashed_password.split("$")
 
-    to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+        if scheme != "pbkdf2_sha256":
+            return False
+
+        expected = hashlib.pbkdf2_hmac(
+            "sha256",
+            plain_password.encode("utf-8"),
+            bytes.fromhex(salt_hex),
+            int(iterations),
+        )
+
+        return hmac.compare_digest(expected.hex(), digest_hex)
+
+    except (ValueError, TypeError):
+        return False
+
+
+def create_access_token(
+    subject: Union[str, Any] = None,
+    data: Optional[dict] = None,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    payload = dict(data or {})
+
+    if subject is not None:
+        payload["sub"] = str(subject)
+
+    expire = datetime.now(timezone.utc) + (
+        expires_delta
+        or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    payload["exp"] = expire
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )

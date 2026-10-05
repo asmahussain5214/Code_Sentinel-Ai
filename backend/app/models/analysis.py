@@ -1,23 +1,63 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
 
-from app.db.session import Base
+from app.db.base_class import Base
 
 
 class AnalysisResult(Base):
-    """Analysis result model storing AI feedback, security flaws, and code metrics."""
-
     __tablename__ = "analysis_results"
 
-    id = Column(Integer, primary_key=True)  # Removed index=True
-    snippet_id = Column(Integer, ForeignKey("code_snippets.id", ondelete="CASCADE"), nullable=False)
-    quality_score = Column(Float, nullable=False)  # 0.0 to 10.0
-    security_score = Column(Float, nullable=False)  # 0.0 to 10.0
-    summary = Column(Text, nullable=False)
-    suggestions = Column(Text, nullable=True)
-    detected_bugs = Column(Text, nullable=True)  # JSON-formatted or bulleted findings
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
 
-    # Relationships
-    snippet = relationship("CodeSnippet", back_populates="analysis_results")
+    snippet_id = Column(
+        Integer,
+        ForeignKey("code_snippets.id"),
+        nullable=False,
+    )
+
+    quality_score = Column(
+        Float,
+        nullable=False,
+        default=0,
+    )
+
+    security_score = Column(
+        Float,
+        nullable=False,
+        default=0,
+    )
+
+    summary = Column(
+        Text,
+        nullable=False,
+        default="",
+    )
+
+    suggestions = Column(
+        Text,
+        nullable=False,
+        default="",
+    )
+
+    detected_bugs = Column(
+        Text,
+        nullable=False,
+        default="",
+    )
+
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    snippet = relationship(
+        "CodeSnippet",
+        back_populates="analysis_results",
+    )

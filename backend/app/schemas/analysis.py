@@ -1,24 +1,25 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, ConfigDict
 
 
 class AnalysisCreate(BaseModel):
-    """Payload for requesting an AI code analysis."""
-
     snippet_id: int
 
 
 class AnalysisResponse(BaseModel):
-    """Analysis output response model with quality scores and bug logs."""
-
     id: int
     snippet_id: int
-    quality_score: float = Field(..., ge=0.0, le=10.0)
-    security_score: float = Field(..., ge=0.0, le=10.0)
+    quality_score: float
+    security_score: float
     summary: str
-    suggestions: Optional[str] = None
-    detected_bugs: Optional[str] = None
-    created_at: datetime
+    suggestions: str
+    detected_bugs: str
+    created_at: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Compatibility names
+AnalysisResultCreate = AnalysisCreate
+AnalysisResult = AnalysisResponse

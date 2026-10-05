@@ -1,48 +1,29 @@
-from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
-
+from pydantic import BaseModel, EmailStr
 
 class UserBase(BaseModel):
-    """Shared user properties."""
-
-    username: str = Field(..., min_length=3, max_length=50)
-    email: EmailStr
-
-
-class UserCreate(UserBase):
-    """Payload for user registration."""
-
-    password: str = Field(..., min_length=6, max_length=100)
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
     role: Optional[str] = "developer"
 
-
-class UserLogin(BaseModel):
-    """Payload for user login."""
-
+class UserCreate(BaseModel):
     username: str
+    email: EmailStr
     password: str
+    role: Optional[str] = "developer"
 
+class UserUpdate(UserBase):
+    password: Optional[str] = None
 
-class UserResponse(UserBase):
-    """User response output model (excludes password)."""
-
+class UserInDB(UserBase):
     id: int
-    role: str
-    is_active: bool
-    created_at: datetime
+    hashed_password: str
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
+class User(UserBase):
+    id: int
 
-class Token(BaseModel):
-    """JWT Token response schema."""
-
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    """JWT Token payload context."""
-
-    username: Optional[str] = None
+    class Config:
+        from_attributes = True

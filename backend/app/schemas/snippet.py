@@ -1,27 +1,33 @@
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class SnippetBase(BaseModel):
-    """Shared code snippet properties."""
-
-    title: str = Field(..., min_length=1, max_length=150)
-    language: str = Field(..., min_length=1, max_length=50)
-    code_content: str = Field(..., min_length=1)
+class CodeSnippetBase(BaseModel):
+    title: Optional[str] = None
+    language: str = "text"
+    code_content: str = Field(min_length=1)
 
 
-class SnippetCreate(SnippetBase):
-    """Payload for creating a new code snippet."""
-
+class CodeSnippetCreate(CodeSnippetBase):
     pass
 
 
-class SnippetResponse(SnippetBase):
-    """Snippet response output model with metadata."""
+class CodeSnippetUpdate(BaseModel):
+    title: Optional[str] = None
+    language: Optional[str] = None
+    code_content: Optional[str] = None
 
+
+class CodeSnippet(CodeSnippetBase):
     id: int
     user_id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Compatibility names used by the endpoint
+SnippetCreate = CodeSnippetCreate
+SnippetResponse = CodeSnippet
